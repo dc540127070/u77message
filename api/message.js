@@ -8,13 +8,13 @@ var APP_ID       = process.env.LC_APP_ID || config.leanCloud.appId;
 var MASTER_KEY   = process.env.LC_APP_MASTER_KEY || config.leanCloud.appMasterKey;
 var _            = require('lodash');
 var q            = require('q');
+var moment       = require('moment');
 
 
 
 router.post('/receive',function(req,res){
 	var queue = req.body;
 
-	console.log(queue);
 
 	var sysConv = "56fba2ffdaeb3a63ca5affa3";
 
@@ -51,14 +51,30 @@ router.post('/receive',function(req,res){
 	})
 });
 
+router.get('/test',function(req,res){
+	var now = moment().format('x');
+	var sign = crypto.createHash('md5').update(now + "rnxopmMcgIn0GQpARAYxzbcj").digest('hex');
+	sign += (','+now+',master');
+	request({
+	    // url: 'https://leancloud.cn/1.1/rtm/messages/logs?convid=56fb44737db2a200509263b9',
+	    url:'https://leancloud.cn/1.1/rtm/messages/unread/912288__u77_259301__u77_avatar.jpg',
+	    headers:{
+	      'X-LC-Id': "miBNAt0bIsYelizPvxkjgBFW-gzGzoHsz",
+	      // 'X-LC-Sign': sign,
+	      "X-LC-Key": "aaKFq8QIg26ED1yOjkO903P2",
+	      // 'Content-Type': 'application/json'
+	    },
+	    // json:true,
+	},function(err,response,body) {
+		console.log(body);
+	});
+	res.send('ok');
+})
+
 router.get('/delete',function(req,res){
 	var params = req.query;
 
-	var clientId = encodeURIComponent(params.clientId);
-
-	var conv_Id = encodeURIComponent(params.convId);
-
-	getMessage(clientId,conv_Id,20).then(function(result){
+	getMessage(params.clientId,params.convId,20).then(function(result){
 		res.send(result);
 	},function(err){
 		res.send(err);
@@ -78,16 +94,24 @@ router.get('/delete',function(req,res){
 
 function getMessage(clientId,conv_Id,limit){
 	var searchDeffer = q.defer();
-
+	var now = moment().format('x');
+	var sign = crypto.createHash('md5').update(now + MASTER_KEY).digest('hex');
+	sign += (','+now+',master');
 	request.get({
-	    url: 'http://localhost:3000/api/message?convId='+conv_Id+'&clientId='+clientId+'&limit='+limit,
+	    url: 'https://leancloud.cn/1.1/rtm/messages/logs?convid='+conv_Id,
+	    headers:{
+	      'X-LC-Id': APP_ID,
+	      'X-LC-Sign': sign,
+	      'Content-Type': 'application/json'
+	    },
+	    json:true,
 	}, function (error, response, body) {
 		var queue = [];
-	    body  = JSON.parse(body);
-	    var data = JSON.parse(body)
-	    _.map(data,function(msg){
-	    	var promise = deleteMessage(msg["msg-id"],conv_Id,msg["timestamp"]);
-	    	queue.push(promise);
+	    _.map(body,function(msg){
+	    	if(msg.from == clientId){
+	    		var promise = deleteMessage(msg["msg-id"],conv_Id,msg["timestamp"]);
+	    		queue.push(promise);	
+	    	}
 	    })
 	    var n=0;
 	    _.map(queue,function(promise){
@@ -113,6 +137,7 @@ function getMessage(clientId,conv_Id,limit){
 }
 
 function deleteMessage(msgId,conv_Id,timestamp){
+	msgId = encodeURIComponent(msgId);
 	var deffer = q.defer();
 	//删除
 	request.del({
@@ -175,7 +200,6 @@ router.get('/',function (req,res) {
 		conv_Id = crypto.createHash('md5').update(conv_Id + ":" + clientId,'utf-8').digest('hex');
 	}
 
-	console.log(conv_Id);
 
 	request.get({
 	    url: 'https://leancloud.cn/1.1/rtm/messages/logs?convid='+conv_Id+'&limit='+limit,

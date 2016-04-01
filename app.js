@@ -1,11 +1,11 @@
-var express = require('express');
-var app = express();
+var express      = require('express');
+var app          = express();
 var cookieParser = require('cookie-parser');
 var bodyParser   = require('body-parser');
 var AV           = require('leanengine');
-var _AV 		 = require('./config/AV');
+var _AV          = require('./config/AV');
 var config       = require('./config/config');
-var api = require('./api');
+var api          = require('./api');
 
 global.Update = _AV.Object.extend('Update');
 
@@ -22,7 +22,7 @@ app.use(bodyParser.urlencoded({
 app.use(cookieParser());
 
 // 跨域支持
-app.all('/api/*', (req, res, next) => {
+app.all('/api/*', function(req,res,next){
   var origin = req.headers.origin;
   if (config.whiteOrigins.indexOf(origin) !== -1) {
     res.header('Access-Control-Allow-Origin', origin);
